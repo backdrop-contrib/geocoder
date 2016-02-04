@@ -1,5 +1,6 @@
 <?php
 
+/*
 $plugin = array(
   'title' => t("Image/exif"),
   'description' => t('Get a location from an image that was taken with a GPS enabled phone or camera'),
@@ -7,6 +8,7 @@ $plugin = array(
   'field_types' => array('file', 'image'),
   'field_callback' => 'geocoder_exif_field',
 );
+*/
 
 function geocoder_exif($uri, $options = array()) {
   // Invoke hook_file_download to check permissions
@@ -20,9 +22,17 @@ function geocoder_exif($uri, $options = array()) {
     }
   }
 
+  if (($pos = strpos($uri, 'public://')) !== false) {
+    // please follow symlinks
+    $path = drupal_realpath('public://') . '/' . substr($uri, $pos+9);
+  }
+  else {
+    $path = drupal_realpath($uri);
+  }
+
   // The user has permission to access the file. Geocode it.
   geophp_load();
-  if ($data = exif_read_data(drupal_realpath($uri))) {
+  if ($data = exif_read_data($path)) {
     if (!isset($data['GPSLatitudeRef'])) return FALSE;
     $lat = geocoder_exif_from($data['GPSLatitudeRef'], $data['GPSLatitude']);
     $lon = geocoder_exif_from($data['GPSLongitudeRef'], $data['GPSLongitude']);

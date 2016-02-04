@@ -8,7 +8,7 @@
 /**
  * Plugins are described by creating a $plugin array which will be used
  * by the system that includes this file.
- */
+ * /
 $plugin = array(
   'title' => t("Google Geocoder"),
   'description' => t('Geocodes via google geocoder'),
@@ -23,6 +23,18 @@ $plugin = array(
  * Process Markup
  */
 function geocoder_google($address, $options = array()) {
+//dsm($address);
+  $pos = strpos($address, '@');
+  if ($pos !== FALSE) {
+    $t = substr($address, $pos+1);
+    $lat = floatval($t);
+    $pos = strpos($t, ',');
+    $t = substr($t, $pos+1);
+    $lon = floatval($t);
+    $point = new Point($lon, $lat);
+//dsm($point);
+    return $point;
+  }
   try {
     $delay_trigger = &drupal_static(__FUNCTION__);
     $delay = variable_get('geocoder_google_delay', 0);
@@ -32,7 +44,11 @@ function geocoder_google($address, $options = array()) {
 
     geophp_load();
 
-    $query = array('address' => $address);
+    $query = array(
+      'address' => $address,
+// "Google Maps API warning: SensorNotRequired: https://developers.google.com/maps/documentation/javascript/error-messages"
+    //'sensor' => 'false',
+    );
 
     if (isset($options['extra_query']) && is_array($options['extra_query'])) {
       $query += $options['extra_query'];
@@ -186,8 +202,8 @@ function geocoder_google($address, $options = array()) {
 
     return $geometry;
   } catch (Exception $e) {
-    // Just rethrow the exception, the geocoder widget handles it.
-    throw $e;
+    watchdog_exception('geocoder', $e, $e->getMessage(), array(), $e->getCode());
+    return FALSE;
   }
 }
 
