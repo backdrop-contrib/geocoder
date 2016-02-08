@@ -51,6 +51,15 @@ function geocoder_field_widget_settings_form($this_field, $instance) {
 
       $entity_fields['name']['label'] = t('Name');
       break;
+
+    case 'country':
+      $all_fields['name'] = array(
+        'field_name' => 'name',
+        'type' => 'text',
+      );
+
+      $entity_fields['name']['label'] = t('Name');
+      break;
   }
 
   // Get a list of all valid fields that we both support and are part of this entity
@@ -156,8 +165,6 @@ function geocoder_field_attach_presave($entity_type, $entity) {
   foreach (field_info_instances($entity_type, $bundle_name) as $field_instance) {
     if ($field_instance['widget']['type'] === 'geocoder') {
       if (($field_value = geocoder_widget_get_field_value($entity_type, $field_instance, $entity)) !== FALSE) {
-//dsm('geocoder');
-//dsm($field_value);
         $entity->{$field_instance['field_name']} = $field_value;
       }
     }
@@ -277,39 +284,49 @@ function geocoder_widget_get_field_value($entity_type, $field_instance, $entity 
       // Geocode geometries
       $geometries = array();
       foreach ($source_field_values as $delta => $item) {
-        // Geocode any value from our source field.
-        try {
-          $file = str_replace('.inc', '', $handler['file']);
-          module_load_include('inc', 'geocoder', $file);
-          $callback = $handler['field_callback'];
-          if (!function_exists($callback)) {
-            dpm($handler);
-            return false;
+        $geometry = NULL;
+        if (!variable_get('geocoder_recode', 0)) {
+          // Attempt to retrieve from persistent cache.
+          $geometry = geocoder_cache_get($handler['name'], $item, $handler_settings);
+        }
+
+        // No cache record, so fetch live.
+        if ($geometry === NULL) {
+          // Geocode any value from our source field.
+          try {
+            $file = str_replace('.inc', '', $handler['file']);
+            module_load_include('inc', 'geocoder', $file);
+            $callback = $handler['field_callback'];
+            if (!function_exists($callback)) {
+              dpm($handler);
+              return false;
+            }
+            if (isset($handler_settings)) {
+              $geometry = $handler['field_callback']($field_info, $item, $handler_settings);
+            }
+            else {
+              $geometry = $handler['field_callback']($field_info, $item);
+            }
           }
-          if (isset($handler_settings)) {
-            $geometry = $handler['field_callback']($field_info, $item, $handler_settings);
-          }
-          else {
-            $geometry = $handler['field_callback']($field_info, $item);
-          }
-          if ($geometry instanceof Geometry) {
-            $geometries[] = $geometry;
-          }
-          else {
-            // An error occured
+          // No-results or errors throw exceptions, which affects 1 field item, not all.
+          catch (Exception $e) {
+            $geometry = FALSE;
+            watchdog_exception('geocoder', $e);
             return FALSE;
           }
+
+          // Save result persistently.
+          geocoder_cache_set($geometry, $handler['name'], $item, $handler_settings);
         }
-        catch (Exception $e) {
-          watchdog_exception('geocoder', $e);
-          return FALSE;
+
+        if ($geometry instanceof Geometry) {
+          $geometries[] = $geometry;
         }
       }
 
       if (empty($geometries)) {
         // This field has no data, so set the field to an empty array in
         // order to delete its saved data.
-        $values = array(NULL);
         return array();
       }
       else {
@@ -375,7 +392,7 @@ function geocoder_widget_resolve_deltas($geometries, $delta_handling = 'default'
   }
 
   // For multiple-to-single handling, run it though geometryReduce
-   if ($delta_handling == 'm_to_s' || $delta_handling == 'c_to_s') {
+  if ($delta_handling == 'm_to_s' || $delta_handling == 'c_to_s') {
     $reduced_geom = geoPHP::geometryReduce($geometries);
     $values[] = geocoder_widget_values_from_geometry($reduced_geom, $target_info);
   }
@@ -424,23 +441,39 @@ function geocoder_widget_values_from_geometry($geometry, $target_info) {
   }
 }
 
-
 /**
- * Geocoder Widget - Parse an address field
+ * Geocoder Widget - Parse an address field.
  */
 function geocoder_widget_parse_addressfield($field_item) {
-  $address = '';
-  if (!empty($field_item['premise']))                 $address .= $field_item['premise'] . ',';
-  if (!empty($field_item['thoroughfare']))            $address .= $field_item['thoroughfare'] . ',';
-  if (!empty($field_item['locality']))                $address .= $field_item['locality'] . ',';
-  if (!empty($field_item['administrative_area']))     $address .= $field_item['administrative_area'] . ',';
-  if (!empty($field_item['sub_administrative_area'])) $address .= $field_item['sub_administrative_area'] . ',';
-  if (!empty($field_item['country']))                 $address .= $field_item['country'] . ',';
-  if (!empty($field_item['postal_code']))             $address .= $field_item['postal_code'] . ',';
+  $address = array();
 
-  $address = rtrim($address, ', ');
+  $address[] = !empty($field_item['organization']) ? $field_item['organization'] : NULL;
+  $address[] = !empty($field_item['premise']) ? $field_item['premise'] : NULL;
+  $address[] = !empty($field_item['sub_premise']) ? $field_item['sub_premise'] : NULL;
+  $address[] = !empty($field_item['thoroughfare']) ? $field_item['thoroughfare'] : NULL;
+  $address[] = !empty($field_item['locality']) ? $field_item['locality'] : NULL;
+  $address[] = !empty($field_item['administrative_area']) ? $field_item['administrative_area'] : NULL;
+  $address[] = !empty($field_item['sub_administrative_area']) ? $field_item['sub_administrative_area'] : NULL;
 
-  return $address;
+  if (!empty($field_item['country'])) {
+    if (module_exists('countries')) {
+      $country = country_load($field_item['country']);
+      $field_item['country'] = $country->name;
+    }
+    else {
+      // Convert country code to country name.
+      include_once DRUPAL_ROOT . '/core/includes/locale.inc';
+      $countries = country_get_list();
+      if (array_key_exists($field_item['country'], $countries)) {
+        $field_item['country'] = $countries[$field_item['country']];
+      }
+    }
+    $address[] = $field_item['country'];
+  }
+
+  $address[] = !empty($field_item['postal_code']) ? $field_item['postal_code'] : NULL;
+
+  return implode(',', array_filter($address));
 }
 
 /**

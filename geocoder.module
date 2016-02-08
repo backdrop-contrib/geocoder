@@ -27,13 +27,10 @@ define('GEOCODER_GOOGLE_AUTH_WORK', 3);
  *   Additional options to pass to the handler. Exact key / values to pass depend on the handler.
  *
  * @param int $cache_type
- *   (optional) The type of caching to use. Defaults to 2 (static and persistent)
- *     0 or FALSE is no-caching at all
- *     1 is static-cache but no persistent-cache
- *     2 is both static-cache AND persistent-cache
+ *   DEPRECATED. All results are cached persistently.
  *
  * @param bool $cache_reset
- *   (optional) Empty the static-cache and re-fill the persistent-cache. Defaults to FALSE.
+ *   (optional) Ignore potentially matched cache record, and live fetch. Defaults to FALSE.
  *
  * @return Geometry
  *   Returns a geoPHP geometry object. Generally a Point.
@@ -43,30 +40,30 @@ define('GEOCODER_GOOGLE_AUTH_WORK', 3);
  *    geocoder('google','4925 Gair Ave, Terrace, BC');
  *    geocoder('google','New York City',array('geometry_type' => 'bounds'));
  */
-function geocoder($handler, $data, $options = array(), $cache_type = 2, $cache_reset = FALSE) {
+function geocoder($handler, $data, $options = array(), $cache_type = 'DEPRECATED', $cache_reset = FALSE) {
 //ctools_include('plugins');
-  static $static_cache = array();
-
-  if ($cache_reset) {
-    $static_cache = array();
-  }
-
-  if ($cache_type) {
-    $cache_id = $handler . '_' . md5(serialize(array($data, $options)));
-    if (!empty($static_cache[$cache_id])) {
-      return $static_cache[$cache_id];
-    }
-  }
 
 //$processor = ctools_get_plugins('geocoder', 'geocoder_handler', $handler);
   $processors = geocoder_handler_plugins();
   $processor = $processors[$handler];
 
-//$geometry = call_user_func($processor['callback'], $data, $options);
-  $geometry = $processor['field_callback']($data, $options);
+  // Attempt to retrieve from persistent cache.
+  $geometry = $cache_reset ? NULL : geocoder_cache_get($handler, $data, $options);
 
-  if ($cache_type) {
-    $static_cache[$cache_id] = $geometry;
+  // No cache record, so fetch live.
+  if ($geometry === NULL) {
+    try {
+      // Load the file.
+    //$geometry = call_user_func($processor['callback'], $data, $options);
+      $geometry = $processor['field_callback']($data, $options);
+    }
+    catch (Exception $e) {
+      watchdog_exception('geocoder', $e);
+      return NULL;
+    }
+
+    // Always save result into persistent cache.
+    geocoder_cache_set($geometry, $handler, $data, $options);
   }
 
   return $geometry;
@@ -119,6 +116,17 @@ function geocoder_geocoder_handler_info() {
       'field_types' => array('text', 'text_long', 'file', 'computed'),
       'field_callback' => 'geocoder_gpx_field',
     ),
+    'openstreetmap_nominatim' => array(
+      'name' => "openstreetmap_nominatim",
+      'title' => t('OpenStreetMap Nominatim'),
+      'description' => t('Geocodes via OpenStreetMap Nominatim'),
+      'callback' => 'geocoder_openstreetmap_nominatim',
+      'weight' => -70,
+      'file' => 'handlers/openstreetmap_nominatim.inc',
+      'field_types' => array('text', 'text_long', 'addressfield', 'location', 'text_with_summary', 'computed', 'taxonomy_term_reference'),
+      'field_callback' => 'geocoder_openstreetmap_nominatim_field',
+      'terms_of_service' => 'http://www.openstreetmap.org/copyright',
+    ),
   );
 }
 
@@ -163,8 +171,6 @@ function geocoder_handler_info($field_type = NULL) {
   //$handlers = ctools_get_plugins('geocoder', 'geocoder_handler');
     $handlers = module_invoke_all('geocoder_handler_info');
   }
-//ddebug_backtrace();
-//dpm($handlers);
   if ($field_type) {
     $field_handlers = $handlers;
     foreach ($field_handlers as $i => $handler) {
@@ -199,7 +205,7 @@ function geocoder_supported_field_types() {
   $supported = array();
 
   $processors = geocoder_handler_info();
-//dpm($processors);
+
   foreach ($processors as $processor) {
     if (isset($processor['field_types'])) {
       foreach ($processor['field_types'] as $field_type) {
@@ -207,7 +213,7 @@ function geocoder_supported_field_types() {
       }
     }
   }
-//dpm($supported);
+
   return $supported;
 }
 
@@ -345,4 +351,62 @@ function geocoder_service_check_request($handler, $format, $check_ac = TRUE) {
     drupal_access_denied();
     exit();
   }
+}
+
+/**
+ * Create a unified cache id from relevant cache data.
+ */
+function _geocoder_cache_cid($data) {
+  ksort($data);
+  return sha1(serialize($data));
+}
+
+/**
+ * Retrieve a cached geocoded location.
+ *
+ * @param string $handler
+ *   The handler used to geocode this data.
+ * @param mixed $data
+ *   The data used to fetch live geo data.
+ * @param array $options
+ *   Handler-specific options that have effect on the result.
+ *
+ * @return Geometry
+ *   A Geometry object, FALSE (no result), or NULL (no cache).
+ */
+function geocoder_cache_get($handler, $data, $options) {
+  $data = compact('handler', 'data', 'options');
+  $cid = _geocoder_cache_cid($data);
+
+  geophp_load();
+  if ($cache = cache_get($cid, 'cache_geocoder')) {
+    return $cache->data['geometry'];
+  }
+}
+
+/**
+ * Cache a geocoded result.
+ *
+ * @param mixed $geometry
+ *   A Geometry object, or FALSE (no result).
+ * @param string $handler
+ *   The handler used to geocode this data.
+ * @param mixed $data
+ *   The data used to fetch live geo data.
+ * @param array $options
+ *   Handler-specific options that have effect on the result.
+ */
+function geocoder_cache_set($geometry, $handler, $data, $options) {
+  // Don't cache no-results, to live geocode the same data again next time.
+  if (!$geometry && !variable_get('geocoder_cache_empty_results', TRUE)) {
+    return;
+  }
+
+  // Construct the cache id from result-relevant parameters.
+  $data = compact('handler', 'data', 'options');
+  $cid = _geocoder_cache_cid($data);
+
+  // Cache result-relevant parameters together with the actual result, so cache records can be traced.
+  $data['geometry'] = $geometry ? $geometry : FALSE;
+  cache_set($cid, $data, 'cache_geocoder', variable_get('geocoder_cache_ttl', CACHE_PERMANENT));
 }
