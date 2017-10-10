@@ -2,6 +2,16 @@
 Geocoder
 ========
 
+                            (
+     (  (    (               )\ )  (  (
+     )\))(  ))\ (    (  (   (()/( ))\ )(
+    ((_))\ /((_))\   )\ )\   ((_))((_|()\
+     (()(_|_)) ((_) ((_|(_)  _| (_))  ((_)
+    / _` |/ -_) _ \/ _/ _ \/ _` / -_)| '_|
+    \__, |\___\___/\__\___/\__,_\___||_|
+    |___/
+
+
 Backdrop port of the Drupal 7 module [Geocoder](https://www.drupal.org/project/geocoder).
 
 Geocoder is a Backdrop module that will extract geographical data (geocode) from just about anything you throw at it such as addresses, GPX files, Geotags from EXIF data in photos, and KML files.
@@ -49,12 +59,12 @@ This project is GPL v2 software. See the LICENSE.txt file in this directory for 
 Current Maintainers
 -------------------
 
-- Juan Olalla (https://github.com/juanolalla)
-- Seeking additional maintainers.
+- Wes Jones (https://github.com/earthday47)
+- gifad (https://github.com/gifad)
 
 Credits
 -------
 
 - Drupal project maintained by [Pol](https://www.drupal.org/u/pol), [Patrick Hayes](https://www.drupal.org/u/phayes), [Simon Georges](https://www.drupal.org/u/simon-georges), [Brandonian](https://www.drupal.org/u/brandonian) and [Michael Favia](https://www.drupal.org/u/michaelfavia)
 - Originally written for Drupal by cspiker, phayes, henryblyth, jeff h, Les Lim, mikeytown2, fago, patrickavella & michaelfavia
-- Ported to Backdrop CMS by Juan Olalla (https://github.com/juanolalla)
+- Ported to Backdrop CMS by gifad (https://github.com/gifad) and Juan Olalla (https://github.com/juanolalla)

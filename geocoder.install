@@ -14,10 +14,3 @@ function geocoder_schema() {
 
   return $schema;
 }
-
-/**
- * Create geocoder's caching table.
- */
-function geocoder_update_7101() {
-  backdrop_install_schema('geocoder');
-}
