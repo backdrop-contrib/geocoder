@@ -1,76 +1,60 @@
+
 Geocoder
 ========
 
-                            (
-     (  (    (               )\ )  (  (
-     )\))(  ))\ (    (  (   (()/( ))\ )(
-    ((_))\ /((_))\   )\ )\   ((_))((_|()\
-     (()(_|_)) ((_) ((_|(_)  _| (_))  ((_)
-    / _` |/ -_) _ \/ _/ _ \/ _` / -_)| '_|
-    \__, |\___\___/\__\___/\__,_\___||_|
-    |___/
+Backdrop port of the Drupal 7 module [Geocoder](https://www.drupal.org/project/geocoder).
 
-#### Contents of this File
-
- * About Geocoder
- * Install
- * Configure
- * Credits
-
-About Geocoder
---------------
-
-Geocoder is a Drupal 7 module that will extract geographical data (geocode) 
-from just about anything you throw at it such as addresses, GPX files, Geotags 
-from EXIF data in photos, and KML files.
-
-A convenient way to allow users to enter an address and have it automatically 
-geocoded is to use it in combination with the Addressfield 
-(http://drupal.org/project/addressfield) and Geofield 
-(http://drupal.org/project/geofield) modules.
+Geocoder is a Backdrop module that will extract geographical data (geocode) from just about anything you throw at it such as addresses, GPX files, Geotags from EXIF data in photos, and KML files.
 
 Geocoder uses the external geocoding services from Google, Yahoo and Yandex.
 
-Here you find great documentation on Geocoder: http://drupal.org/node/1355780
+Geocoder has been ported to Backdrop from Drupal 7 (https://www.drupal.org/project/geocoder). Here you will find more documentation: http://drupal.org/node/1355780.
+Geocoder also provides integration with the Drupal Geofield module, although it has not been ported to Backdrop yet.
 
-Install
+Installation
+------------
+
+- Install this module using the official Backdrop CMS instructions at https://backdropcms.org/guide/modules
+
+- Install and enable the Geocoder its required module geoPHP (https://backdropcms.org/project/geophp).
+
+- Assign the necessary permissions at /admin/config/people/permissions#module-geocoder.
+
+- Configure the desired settings at /admin/config/content/geocoder.
+
+Geocoder API
+------------
+
+Geocoder provides a nice general API for doing geocoding. Here's an example:
+
+```php
+// Geocode an address
+$address = '4925 Gair Ave, Terrace, BC';
+$point = geocoder('google',$address);
+$geoJSON = $point->out('json');
+```
+```php
+// List all available handlers
+$handlers = geocoder_handler_info();
+dpm($handlers);
+```
+
+New geocoder handlers as easy to define. Simply create a new plugin file in the folder: plugins/geocoder_handler.
+
+License
 -------
 
-- Install this module using the official Backdrop CMS instructions at 
-  https://backdropcms.org/guide/modules
-- Install required module geoPHP
-- Install optional modules Addressfield and Geofield
-
-Configure
----------
-
-Assign the necessary permissions at /admin/people/permissions#module-geocoder
-
-If you have enabled the modules Addressfield and Geofield you can start using Geocoder in a content type, e.g., an event.
-
-Add a new address field by going to /admin/structure/types, choosing the 
-desired content type and opening the "Manage fields" tab. Add a "Postal 
-address" field and configure the field. Add a geofield and select "Geocode 
-from another field" as widget. In the settings for the geofield you can now 
-choose the source field to geocode from. You can also choose which geocoding 
-service (Google et cetera) to use and configure these services.
-
-Now you have a place where Geocoder can store its result (geofield) and the 
-input to the geocode operation (addressfield). You can then use 
-OpenLayers to map the geofields.
-
-Note: you can use Geocoder in any entity such as a user, a taxonomy term or 
-a comment.
+This project is GPL v2 software. See the LICENSE.txt file in this directory for complete text.
 
 Current Maintainers
 -------------------
 
-- Wes Jones (https://github.com/earthday47)
-- gifad (https://github.com/gifad)
+- Juan Olalla (https://github.com/juanolalla)
+- Seeking additional maintainers.
 
 Credits
 -------
 
-- Ported to Backdrop CMS by gifad (https://github.com/gifad)
-- Originally written for Drupal by: cspiker, phayes, henryblyth, jeff h, 
-  Les Lim, mikeytown2, fago, patrickavella & michaelfavia
+- Drupal project maintained by [Pol](https://www.drupal.org/u/pol), [Patrick Hayes](https://www.drupal.org/u/phayes), [Simon Georges](https://www.drupal.org/u/simon-georges), [Brandonian](https://www.drupal.org/u/brandonian) and [Michael Favia](https://www.drupal.org/u/michaelfavia)
+- Originally written for Drupal by cspiker, phayes, henryblyth, jeff h, Les Lim, mikeytown2, fago, patrickavella & michaelfavia
+- Ported to Backdrop CMS by Juan Olalla (https://github.com/juanolalla)
