@@ -111,6 +111,7 @@ function geocoder_get_plugins($type) {
       if (isset($plugin)) {
         $id = basename($filename, '.inc');
         $plugins[$id] = $plugin;
+        $plugins[$id]['name'] = $id;
       }
     }
   }

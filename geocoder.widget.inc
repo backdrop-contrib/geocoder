@@ -60,15 +60,6 @@ function geocoder_field_widget_settings_form($this_field, $instance) {
 
       $entity_fields['name']['label'] = t('Name');
       break;
-
-    case 'country':
-      $all_fields['name'] = array(
-        'field_name' => 'name',
-        'type' => 'text',
-      );
-
-      $entity_fields['name']['label'] = t('Name');
-      break;
   }
 
   // Get a list of all valid fields that we both support and are part of this entity
@@ -85,17 +76,6 @@ function geocoder_field_widget_settings_form($this_field, $instance) {
     }
   }
 
-  // Extend with virtual fields.
-  $info = entity_get_all_property_info($instance['entity_type']);
-  foreach ($info as $property_name => $property) {
-    if (isset($property['type']) && in_array($property['type'], array('location', 'text'))) {
-      if (!isset($valid_fields[$property_name])) {
-        $valid_fields[$property_name] = $property['label'];
-      }
-    }
-  }
-
-  natcasesort($valid_fields);
   $form['geocoder_field'] = array(
     '#type' => 'select',
     '#title' => t('Geocode from field'),
@@ -193,67 +173,6 @@ function geocoder_field_attach_presave($entity_type, $entity) {
 }
 
 /**
- * Find a field instance's or entity property's relevant meta data.
- */
-function geocoder_widget_get_field_info($entity_type, $field_instance, $entity) {
-  $entity_info = entity_get_info($entity_type);
-  $field_name = is_array($field_instance['widget']['settings']['geocoder_field']) ? reset($field_instance['widget']['settings']['geocoder_field']) : $field_instance['widget']['settings']['geocoder_field'];
-
-  // Determine the source type, if it's a entity-key, we mock it as a "text" field
-  if (in_array($field_name, $entity_info['entity keys']) && $entity) {
-    $field_info = array('type' => 'text', 'entity_key' => TRUE);
-  }
-  else {
-    $field_info = field_info_field($field_name);
-    if (!$field_info) {
-      $info = entity_get_all_property_info($entity_type);
-      $field_info = $info[$field_name];
-    }
-    $field_info['entity_key'] = FALSE;
-  }
-
-  return $field_info;
-}
-
-/**
- * Return the value for the given proxy-field for the given entity.
- */
-function geocoder_widget_get_entity_field_value($entity_type, $field_instance, $entity) {
-  $field_name = is_array($field_instance['widget']['settings']['geocoder_field']) ? reset($field_instance['widget']['settings']['geocoder_field']) : $field_instance['widget']['settings']['geocoder_field'];
-  $field_info = geocoder_widget_get_field_info($entity_type, $field_instance, $entity);
-
-  // Get the source values
-  if ($field_info['entity_key'] && $entity) {
-    $source_field_values = array(array('value' => $entity->$field_name));
-  }
-  else if ($entity) {
-    $wrapper = entity_metadata_wrapper($entity_type, $entity);
-    $field_wrapper = $wrapper->$field_name;
-    $value = $field_wrapper->value();
-    $values = array_filter(is_array($value) && isset($value[0]) ? $value : array($value));
-    $source_field_values = array_map(function($value) {
-      if (is_array($value)) {
-        // Clean up array from Addressfield, for diff.
-        unset($value['element_key']);
-
-        // Clean up array from Location, for diff.
-        unset($value['location_settings'], $value['country_name'], $value['latitude'], $value['longitude'], $value['lid']);
-
-        return array_filter($value);
-      }
-
-      return array('value' => $value);
-    }, $values);
-  }
-  else {
-    // We can't find the source values
-    return FALSE;
-  }
-
-  return $source_field_values;
-}
-
-/**
  * Get a field's value based on geocoded data.
  *
  * @param $entity_type
@@ -276,6 +195,7 @@ function geocoder_widget_get_field_value($entity_type, $field_instance, $entity 
     trigger_error('geocoder_widget_get_field_value: You must pass either $source_field_values OR $entity', E_USER_ERROR);
     return FALSE;
   }
+  $entity_info = entity_get_info($entity_type);
 
   // Required settings
   if (isset($field_instance['widget']['settings']['geocoder_handler']) && isset($field_instance['widget']['settings']['geocoder_field'])) {
@@ -283,16 +203,57 @@ function geocoder_widget_get_field_value($entity_type, $field_instance, $entity 
     $field_name = is_array($field_instance['widget']['settings']['geocoder_field']) ? reset($field_instance['widget']['settings']['geocoder_field']) : $field_instance['widget']['settings']['geocoder_field'];
     $target_info = field_info_field($field_instance['field_name']);
 
-    $field_info = geocoder_widget_get_field_info($entity_type, $field_instance, $entity);
+    // Determine the source type, if it's a entity-key, we mock it as a "text" field
+    if (in_array($field_name, $entity_info['entity keys']) && $entity) {
+      $field_info = array('type' => 'text', 'entity_key' => TRUE);
+    }
+    else {
+      $field_info = field_info_field($field_name);
+      $field_info['entity_key'] = FALSE;
+    }
 
     // Get the source values
     if (!$source_field_values) {
-      $source_field_values = geocoder_widget_get_entity_field_value($entity_type, $field_instance, $entity);
+      if ($field_info['entity_key'] && $entity) {
+        $source_field_values = array(array('value' => $entity->$field_name));
+      }
+      elseif ($entity) {
+        $source_field_values = field_get_items($entity_type, $entity, $field_name, isset($entity->language) ? $entity->language : NULL);
+      }
+      else {
+        // We can't find the source values
+        return FALSE;
+      }
+    }
+
+    // Remove source values that are not valid.
+    if ($source_field_values) {
+      foreach ($source_field_values as $delta => $item) {
+        if (!is_numeric($delta)) {
+          unset($source_field_values[$delta]);
+        }
+      }
     }
 
     // If no valid source values were passed.
     if (empty($source_field_values)) {
       return array();
+    }
+
+    // For entities being updated, determine if another geocode is necessary
+    if ($entity) {
+      if (!empty($entity->original)) {
+        //@@TODO: Deal with entity-properties (non-fields)
+        //@@TODO: This isn't working with file fields. Should use some kind of lookup / map
+        $field_original = field_get_items($entity_type, $entity->original, $field_name, isset($entity->original->language) ? $entity->original->language : NULL);
+        $target_original = field_get_items($entity_type, $entity->original, $field_instance['field_name'], isset($entity->original->language) ? $entity->original->language : NULL);
+        if (!empty($field_original) && !empty($target_original)) {
+          $diff = geocoder_widget_array_recursive_diff($field_original, $source_field_values);
+          if (empty($diff)) {
+            return FALSE;
+          }
+        }
+      }
     }
 
     // Get the handler-specific-settings
@@ -498,7 +459,7 @@ function geocoder_widget_parse_addressfield($field_item) {
     }
     else {
       // Convert country code to country name.
-      include_once BACKDROP_ROOT . '/includes/locale.inc';
+      include_once BACKDROP_ROOT . '/core/includes/locale.inc';
       $countries = country_get_list();
       if (array_key_exists($field_item['country'], $countries)) {
         $field_item['country'] = $countries[$field_item['country']];
@@ -545,3 +506,29 @@ function geocoder_widget_get_link($entity_type, $entity) {
   ));
   return l($label, $uri_info['path'], $uri_info);
 }
+
+function geocoder_widget_array_recursive_diff($aArray1, $aArray2) {
+  $aReturn = array();
+  if (empty($aArray1)) {
+    return $aReturn;
+  }
+  foreach ($aArray1 as $mKey => $mValue) {
+    if (array_key_exists($mKey, $aArray2)) {
+      if (is_array($mValue)) {
+        $aRecursiveDiff = geocoder_widget_array_recursive_diff($mValue, $aArray2[$mKey]);
+        if (count($aRecursiveDiff)) {
+          $aReturn[$mKey] = $aRecursiveDiff;
+        }
+      }
+      elseif (!empty($mValue)) {
+        if ($mValue != $aArray2[$mKey]) {
+          $aReturn[$mKey] = $mValue;
+        }
+      }
+    }
+    elseif (!empty($mValue)) {
+      $aReturn[$mKey] = $mValue;
+    }
+  }
+  return $aReturn;
+ }
