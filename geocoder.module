@@ -349,9 +349,9 @@ function geocoder_cache_set($geometry, $handler, $data, $options) {
 /**
  * Implements hook_config_info().
  */
-function email_config_info() {
-  $prefixes['email.settings'] = array(
-    'label' => t('Email settings'),
+function geocoder_config_info() {
+  $prefixes['geocoder.settings'] = array(
+    'label' => t('Geocoder settings'),
     'group' => t('Configuration'),
   );
   return $prefixes;
