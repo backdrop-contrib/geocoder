@@ -4,16 +4,31 @@
  * Implements hook_field_widget_info().
  */
 function geocoder_field_widget_info() {
-  return array(
+  $info = array(
     'geocoder' => array(
       'label' => t('Geocode from another field'),
-      'field types' => array('geofield', 'geolocation_latlng', 'location', 'postgis'),
+      'field types' => array(),
       'behaviors' => array(
         'multiple values' => FIELD_BEHAVIOR_CUSTOM,
         'default value' => FIELD_BEHAVIOR_NONE,
       ),
     ),
   );
+
+  if (module_exists('geofield')) {
+    $info['geocoder']['field types'][] = 'geofield';
+  }
+  if (module_exists('geolocation')) {
+    $info['geocoder']['field types'][] = 'geolocation_latlng';
+  }
+  if (module_exists('location')) {
+    $info['geocoder']['field types'][] = 'location';
+  }
+  if (module_exists('geofield_postgis')) {
+    $info['geocoder']['field types'][] = 'postgis';
+  }
+
+  return $info;
 }
 
 /**
