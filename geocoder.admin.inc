@@ -1,5 +1,4 @@
 <?php
-
 /**
  * @file
  * Settings form.
@@ -41,7 +40,7 @@ function geocoder_admin_settings($form, &$form_state) {
     '#default_value' => variable_get('geocoder_google_auth_method', GEOCODER_GOOGLE_AUTH_NONE),
     '#options'       => array(
       GEOCODER_GOOGLE_AUTH_NONE => 'None',
-      GEOCODER_GOOGLE_AUTH_KEY  => 'API Key (free)',
+      GEOCODER_GOOGLE_AUTH_KEY  => 'Google API Key',
       GEOCODER_GOOGLE_AUTH_WORK => 'Google Maps API for Work',
     ),
   );
@@ -49,8 +48,8 @@ function geocoder_admin_settings($form, &$form_state) {
   $form['geocoder_apikey_google'] = array(
     '#type'        => 'textfield',
     '#title'       => t('Google Maps API Key'),
-    '#description' => t('Obtain a free Google Geocoding API Key at <a href="@link">@link</a>', array(
-      '@link' => 'https://developers.google.com/maps/documentation/geocoding/#api_key',
+    '#description' => t('Obtain a Google API Key at <a href="@link">@link</a>', array(
+      '@link' => 'https://developers.google.com/maps/documentation/geocoding/start#get-a-key',
     )),
     '#default_value' => empty($geocoder_settings['geocoder_apikey_google']) ? '' : $geocoder_settings['geocoder_apikey_google'],
     '#required'      => FALSE,
