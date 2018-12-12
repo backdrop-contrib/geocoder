@@ -1,5 +1,4 @@
 <?php
-
 /**
  * @file
  * Plugin to provide a Mapzen geocoder.
@@ -26,8 +25,9 @@ function geocoder_mapzen($address, $options = array()) {
   $api_url = "https://search.mapzen.com/v1/search";
   $config = config('geocoder.settings');
 
-  if (!empty($config->get('geocoder_apikey_mapzen'))) {
-    $api_key = $config->get('geocoder_apikey_mapzen');
+  $apikey_mapzen = $config->get('geocoder_apikey_mapzen');
+  if (!empty($apikey_mapzen)) {
+    $api_key = $apikey_mapzen;
   }
   else {
     throw new Exception('You must specify an API key for Mapzen.');
