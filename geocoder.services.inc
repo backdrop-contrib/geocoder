@@ -1,5 +1,10 @@
 <?php
 /**
+ * @file
+ * Services.
+ */
+
+/**
  * Implements hook_services_resources().
  */
 function geocoder_services_resources() {

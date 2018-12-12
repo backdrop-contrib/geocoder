@@ -1,5 +1,4 @@
 <?php
-
 /**
  * @file
  * Plugin to provide a MapQuest Nominatim geocoder.

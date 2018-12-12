@@ -1,6 +1,4 @@
 <?php
-// $Id$
-
 /**
  * @file
  * Plugin to provide a bing geocoder.

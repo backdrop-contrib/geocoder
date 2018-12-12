@@ -1,4 +1,8 @@
 <?php
+/**
+ * @file
+ * Drush commands.
+ */
 
 /**
  * Implementation of hook_drush_command().

@@ -1,4 +1,8 @@
 <?php
+/**
+ * @file
+ * Plugin for EXIF.
+ */
 
 $plugin = array(
   'title' => t("Image/exif"),
