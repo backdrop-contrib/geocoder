@@ -137,8 +137,9 @@ function geocoder_field_widget_settings_form($this_field, $instance) {
       }
 
       if (isset($handler['settings_callback'])) {
-        $file = str_replace('.inc', '', $handler['file']);
-        module_load_include('inc', 'geocoder', $file);
+        // Load the file.
+        geocoder_get_handler($handler_id);
+
         $settings_callback = $handler['settings_callback'];
         $form['handler_settings'][$handler_id] = array_merge($form['handler_settings'][$handler_id], $settings_callback($default_values));
       }
@@ -161,8 +162,8 @@ function geocoder_field_widget_settings_form($this_field, $instance) {
   );
 
   // Add javascript to sync allowed values. Note that we are not using AJAX because we do not have access to the raw form_state here
-  drupal_add_js(array('geocoder_widget_settings' => array('handlers' => $handlers_by_type, 'types' => $field_types)), 'setting');
-  drupal_add_js(drupal_get_path('module', 'geocoder') . '/geocoder.admin.js', 'file');
+  backdrop_add_js(array('geocoder_widget_settings' => array('handlers' => $handlers_by_type, 'types' => $field_types)), 'setting');
+  backdrop_add_js(backdrop_get_path('module', 'geocoder') . '/geocoder.admin.js', 'file');
 
   return $form;
 }
@@ -216,7 +217,6 @@ function geocoder_widget_get_field_value($entity_type, $field_instance, $entity 
     $handler = geocoder_get_handler($field_instance['widget']['settings']['geocoder_handler']);
     $field_name = is_array($field_instance['widget']['settings']['geocoder_field']) ? reset($field_instance['widget']['settings']['geocoder_field']) : $field_instance['widget']['settings']['geocoder_field'];
     $target_info = field_info_field($field_instance['field_name']);
-  //$target_type = $target_info['type'];
 
     // Determine the source type, if it's a entity-key, we mock it as a "text" field
     if (in_array($field_name, $entity_info['entity keys']) && $entity) {
@@ -232,7 +232,7 @@ function geocoder_widget_get_field_value($entity_type, $field_instance, $entity 
       if ($field_info['entity_key'] && $entity) {
         $source_field_values = array(array('value' => $entity->$field_name));
       }
-      else if ($entity) {
+      elseif ($entity) {
         $source_field_values = field_get_items($entity_type, $entity, $field_name, isset($entity->language) ? $entity->language : NULL);
       }
       else {
@@ -249,6 +249,7 @@ function geocoder_widget_get_field_value($entity_type, $field_instance, $entity 
         }
       }
     }
+
     // If no valid source values were passed.
     if (empty($source_field_values)) {
       return array();
@@ -274,6 +275,9 @@ function geocoder_widget_get_field_value($entity_type, $field_instance, $entity 
     if (isset($field_instance['widget']['settings']['handler_settings'][$handler['name']])) {
       $handler_settings = $field_instance['widget']['settings']['handler_settings'][$handler['name']];
     }
+    else {
+      $handler_settings = array();
+    }
 
     // Determine how we deal with deltas (multi-value fields)
     if (empty($field_instance['widget']['settings']['delta_handling'])) {
@@ -289,18 +293,15 @@ function geocoder_widget_get_field_value($entity_type, $field_instance, $entity 
     }
 
     // Allow other modules to alter values before we geocode them.
-    drupal_alter('geocoder_geocode_values',
-        $source_field_values, $field_info, $handler_settings, $field_instance
-    );
+    backdrop_alter('geocoder_geocode_values', $source_field_values, $field_info, $handler_settings, $field_instance);
 
     if (is_array($source_field_values) && count($source_field_values)) {
-      $values = array();
-
-      // Geocode geometries
+      // Geocode geometries.
       $geometries = array();
       foreach ($source_field_values as $delta => $item) {
         $geometry = NULL;
-        if (!variable_get('geocoder_recode', 0)) {
+        $config = config('geocoder.settings');
+        if (!$config->get('geocoder_recode')) {
           // Attempt to retrieve from persistent cache.
           $geometry = geocoder_cache_get($handler['name'], $item, $handler_settings);
         }
@@ -309,33 +310,23 @@ function geocoder_widget_get_field_value($entity_type, $field_instance, $entity 
         if ($geometry === NULL) {
           // Geocode any value from our source field.
           try {
-            $file = str_replace('.inc', '', $handler['file']);
-            module_load_include('inc', 'geocoder', $file);
-            $callback = $handler['field_callback'];
-            if (!function_exists($callback)) {
-              dpm($handler);
-              return false;
-            }
-            if (isset($handler_settings)) {
-              $geometry = $handler['field_callback']($field_info, $item, $handler_settings);
-            }
-            else {
-              $geometry = $handler['field_callback']($field_info, $item);
-            }
-          }
-          // No-results or errors throw exceptions, which affects 1 field item, not all.
-          catch (Exception $e) {
-            $geometry = FALSE;
-            watchdog_exception('geocoder', $e);
-            return FALSE;
-          }
+            $geometry = call_user_func($handler['field_callback'], $field_info, $item, $handler_settings);
 
-          // Save result persistently.
-          geocoder_cache_set($geometry, $handler['name'], $item, $handler_settings);
+            // Save result persistently.
+            geocoder_cache_set($geometry, $handler['name'], $item, $handler_settings);
+          }
+          // Exception affects just this one field item.
+          catch (Exception $e) {
+            watchdog_exception('geocoder', $e, NULL, array(), WATCHDOG_ERROR, geocoder_widget_get_link($entity_type, $entity));
+            continue;
+          }
         }
 
         if ($geometry instanceof Geometry) {
           $geometries[] = $geometry;
+        }
+        elseif ($config->get('geocoder_log_empty_results')) {
+          watchdog('geocoder', 'No results for geocoding', NULL, WATCHDOG_NOTICE, geocoder_widget_get_link($entity_type, $entity));
         }
       }
 
@@ -467,7 +458,13 @@ function geocoder_widget_parse_addressfield($field_item) {
   $address[] = !empty($field_item['sub_premise']) ? $field_item['sub_premise'] : NULL;
   $address[] = !empty($field_item['thoroughfare']) ? $field_item['thoroughfare'] : NULL;
   $address[] = !empty($field_item['locality']) ? $field_item['locality'] : NULL;
-  $address[] = !empty($field_item['administrative_area']) ? $field_item['administrative_area'] : NULL;
+  if (!empty($field_item['country']) && !empty($field_item['administrative_area'])) {
+    module_load_include('inc', 'addressfield', 'addressfield.administrative_areas');
+    $address[] = addressfield_get_administrative_areas($field_item['country'])[$field_item['administrative_area']];
+  }
+  else {
+    $address[] = !empty($field_item['administrative_area']) ? $field_item['administrative_area'] : NULL;
+  }
   $address[] = !empty($field_item['sub_administrative_area']) ? $field_item['sub_administrative_area'] : NULL;
 
   if (!empty($field_item['country'])) {
@@ -477,7 +474,7 @@ function geocoder_widget_parse_addressfield($field_item) {
     }
     else {
       // Convert country code to country name.
-      include_once DRUPAL_ROOT . '/core/includes/locale.inc';
+      include_once BACKDROP_ROOT . '/core/includes/locale.inc';
       $countries = country_get_list();
       if (array_key_exists($field_item['country'], $countries)) {
         $field_item['country'] = $countries[$field_item['country']];
@@ -496,7 +493,6 @@ function geocoder_widget_parse_addressfield($field_item) {
  */
 function geocoder_widget_parse_locationfield($field_item) {
   $address = '';
-  if (!empty($field_item['name']))        $address .= $field_item['name'] . ',';
   if (!empty($field_item['street']))      $address .= $field_item['street'] . ',';
   if (!empty($field_item['additional']))  $address .= $field_item['additional'] . ',';
   if (!empty($field_item['city']))        $address .= $field_item['city'] . ',';
@@ -512,6 +508,19 @@ function geocoder_widget_parse_locationfield($field_item) {
   return $address;
 }
 
+/**
+ * Geocoder Widget utility function to build a link for an entity, ready for use in watchdog().
+ */
+function geocoder_widget_get_link($entity_type, $entity) {
+  $uri_info = entity_uri($entity_type, $entity);
+  list($id, , $bundle) = entity_extract_ids($entity_type, $entity);
+  $label = t('View offending @entity_type (@bundle # @id)', array(
+    '@entity_type' => $entity_type,
+    '@bundle' => $bundle,
+    '@id' => $id,
+  ));
+  return l($label, $uri_info['path'], $uri_info);
+}
 
 function geocoder_widget_array_recursive_diff($aArray1, $aArray2) {
   $aReturn = array();
@@ -522,15 +531,19 @@ function geocoder_widget_array_recursive_diff($aArray1, $aArray2) {
     if (array_key_exists($mKey, $aArray2)) {
       if (is_array($mValue)) {
         $aRecursiveDiff = geocoder_widget_array_recursive_diff($mValue, $aArray2[$mKey]);
-        if (count($aRecursiveDiff)) { $aReturn[$mKey] = $aRecursiveDiff; }
-      } elseif (!empty($mValue)) {
+        if (count($aRecursiveDiff)) {
+          $aReturn[$mKey] = $aRecursiveDiff;
+        }
+      }
+      elseif (!empty($mValue)) {
         if ($mValue != $aArray2[$mKey]) {
           $aReturn[$mKey] = $mValue;
         }
       }
-    } elseif (!empty($mValue)) {
+    }
+    elseif (!empty($mValue)) {
       $aReturn[$mKey] = $mValue;
     }
   }
   return $aReturn;
-}
+ }
