@@ -15,7 +15,6 @@ function geocoder_field_widget_info() {
     ),
   );
 
-  //
   if (module_exists('geofield')) {
     $info['geocoder']['field types'][] = 'geofield';
   }
