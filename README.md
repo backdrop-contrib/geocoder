@@ -1,66 +1,70 @@
 Geocoder
 ========
 
-                            (
-     (  (    (               )\ )  (  (
-     )\))(  ))\ (    (  (   (()/( ))\ )(
-    ((_))\ /((_))\   )\ )\   ((_))((_|()\
-     (()(_|_)) ((_) ((_|(_)  _| (_))  ((_)
-    / _` |/ -_) _ \/ _/ _ \/ _` / -_)| '_|
-    \__, |\___\___/\__\___/\__,_\___||_|
-    |___/
+Geocoder is a module that will extract geographical data (geocode) from
+addresses, GPX files, Geotags from EXIF data in photos, and KML files.
 
-#### Contents of this File
+Use this module in combination with the Addressfield module
+(https://github.com/nbackdrop-contrib/addressfield) and Geofield module
+(https://github.com/nbackdrop-contrib/geofield) for a convenient way to get
+geo data.
 
- * About Geocoder
- * Install
- * Configure
- * Credits
+Geocoder uses external geocoding services from Google, Yahoo, and Yandex.
 
-About Geocoder
---------------
+                        (
+ (  (    (               )\ )  (  (
+ )\))(  ))\ (    (  (   (()/( ))\ )(
+((_))\ /((_))\   )\ )\   ((_))((_|()\
+ (()(_|_)) ((_) ((_|(_)  _| (_))  ((_)
+/ _` |/ -_) _ \/ _/ _ \/ _` / -_)| '_|
+\__, |\___\___/\__\___/\__,_\___||_|
+|___/
 
-Geocoder is a Drupal 7 module that will extract geographical data (geocode)
-from just about anything you throw at it such as addresses, GPX files, Geotags
-from EXIF data in photos, and KML files.
 
-A convenient way to allow users to enter an address and have it automatically
-geocoded is to use it in combination with the Addressfield
-(http://drupal.org/project/addressfield) and Geofield
-(http://drupal.org/project/geofield) modules.
+Installation
+------------
 
-Geocoder uses the external geocoding services from Google, Yahoo and Yandex.
+- Install this module and the required geoPHP module using the official
+  Backdrop CMS instructions at https://backdropcms.org/guide/modules.
 
-Here you find great documentation on Geocoder: http://drupal.org/node/1355780
+- Install the (optional) common modules Addressfield and Geofield.
 
-Install
--------
+- Assign any necessary permissions.
 
-- Install this module using the official Backdrop CMS instructions at
-  https://backdropcms.org/guide/modules
-- Install required module geoPHP
-- Install optional modules Addressfield and Geofield
+- If you have enabled the modules Addressfield and Geofield you can start using
+  Geocoder on a content type.
 
-Configure
----------
+  - Add a new address field. Go to Administration > Structure > Content types
+    (admin/structure/types), choose the desired content type, and select
+    "Manage fields".
 
-Assign the necessary permissions at /admin/people/permissions#module-geocoder
+    - Add a Postal address field and configure the field however you like.
 
-If you have enabled the modules Addressfield and Geofield you can start using Geocoder in a content type, e.g., an event.
+    - Add a Geofield and select "Geocode from another field" as the widget.
 
-Add a new address field by going to /admin/structure/types, choosing the
-desired content type and opening the "Manage fields" tab. Add a "Postal
-address" field and configure the field. Add a geofield and select "Geocode
-from another field" as widget. In the settings for the geofield you can now
-choose the source field to geocode from. You can also choose which geocoding
-service (Google et cetera) to use and configure these services.
+      - In the settings for the geofield you can now choose the source field to
+        geocode from. You can also choose which geocoding service (Google etc)
+        to use and configure the service.
 
-Now you have a place where Geocoder can store its result (geofield) and the
-input to the geocode operation (addressfield). You can then use
-OpenLayers to map the geofields.
+  - Now you have a place where Geocoder can store its result (geofield) and the
+    input to the geocode operation (addressfield).
 
-Note: you can use Geocoder in any entity such as a user, a taxonomy term or
-a comment.
+
+Documentation
+-------------
+
+Documentation for Geocoder is available on Drupal.org:
+http://drupal.org/node/1355780
+
+Additional documentation is located in the Wiki:
+https://github.com/backdrop-contrib/geocoder/wiki/Documentation.
+
+Issues
+------
+
+Bugs and Feature requests should be reported in the Issue Queue:
+https://github.com/backdrop-contrib/geocoder/issues.
+
 
 Current Maintainers
 -------------------
@@ -72,6 +76,14 @@ Current Maintainers
 Credits
 -------
 
-- Ported to Backdrop CMS by gifad (https://github.com/gifad)
+- Port to Backdrop CMS completed Juan Olalla (https://github.com/juanolalla)
+- Port to Backdrop CMS improved by Wes Jones (https://github.com/earthday47)
+- Port to Backdrop CMS started by gifad (https://github.com/gifad)
 - Originally written for Drupal by: cspiker, phayes, henryblyth, jeff h,
   Les Lim, mikeytown2, fago, patrickavella & michaelfavia
+
+License
+-------
+
+This project is GPL v2 software. See the LICENSE.txt file in this directory for
+complete text.
