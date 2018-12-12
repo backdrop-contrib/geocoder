@@ -11,6 +11,7 @@ geo data.
 
 Geocoder uses external geocoding services from Google, Yahoo, and Yandex.
 
+```
                         (
  (  (    (               )\ )  (  (
  )\))(  ))\ (    (  (   (()/( ))\ )(
@@ -19,7 +20,7 @@ Geocoder uses external geocoding services from Google, Yahoo, and Yandex.
 / _` |/ -_) _ \/ _/ _ \/ _` / -_)| '_|
 \__, |\___\___/\__\___/\__,_\___||_|
 |___/
-
+```
 
 Installation
 ------------
