@@ -2,6 +2,6 @@ type = module
 name = Geocoder
 description = An API and widget to geocode various known data into other GIS data types.
 backdrop = 1.x
-dependencies[] = geophp
+dependencies[] = geofield
 
 configure = admin/config/content/geocoder

@@ -21,7 +21,7 @@ $plugin = array(
  * Process Markup
  */
 function geocoder_mapzen($address, $options = array()) {
-  geophp_load();
+  module_load_include('inc', 'geofield', 'libraries/geophp/geoPHP');
   $api_url = "https://search.mapzen.com/v1/search";
   $config = config('geocoder.settings');
 
