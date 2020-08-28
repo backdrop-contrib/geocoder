@@ -5,8 +5,8 @@ Geocoder is a module that will extract geographical data (geocode) from
 addresses, GPX files, Geotags from EXIF data in photos, and KML files.
 
 Use this module in combination with the Addressfield module
-(https://github.com/nbackdrop-contrib/addressfield) and Geofield module
-(https://github.com/nbackdrop-contrib/geofield) for a convenient way to get
+(https://github.com/backdrop-contrib/addressfield) and Geofield module
+(https://github.com/backdrop-contrib/geofield) for a convenient way to get
 geo data.
 
 Geocoder uses external geocoding services from Google, Yahoo, and Yandex.
