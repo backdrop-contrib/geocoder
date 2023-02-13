@@ -2,7 +2,7 @@
 
 /**
  * @file
- * Plugin to provide a google geocoder.
+ * Plugin to provide a Google geocoder.
  */
 
 /**
@@ -11,7 +11,7 @@
  */
 $plugin = array(
   'title' => t("Google Geocoder"),
-  'description' => t('Geocodes via google geocoder'),
+  'description' => t('Geocodes via Google geocoder'),
   'callback' => 'geocoder_google',
   'field_types' => array('text', 'text_long', 'addressfield', 'location', 'text_with_summary', 'computed', 'taxonomy_term_reference'),
   'field_callback' => 'geocoder_google_field',
@@ -109,7 +109,7 @@ function geocoder_google($address, $options = array()) {
       '@code' => $result->code,
       '@error' => $result->error,
     );
-    $msg = t('HTTP request to google API failed.\nCode: @code\nError: @error', $args);
+    $msg = t('HTTP request to Google API failed. Code: @code. Error: @error', $args);
     throw new Exception($msg);
   }
 
@@ -120,7 +120,11 @@ function geocoder_google($address, $options = array()) {
   }
   elseif ($data->status != 'OK') {
     $args = array('@status' => $data->status);
-    $msg = t('Google API returned bad status.\nStatus: @status', $args);
+    $msg = t('Google API returned bad status. Status: @status.', $args);
+    if (isset($data->error_message)) {
+      $errors['@errormsg'] = $data->error_message;
+      $msg .= ' ' . t('Error message: "@errormsg"', $errors);
+    }
     throw new Exception($msg);
   }
 
