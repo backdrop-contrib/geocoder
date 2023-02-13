@@ -111,10 +111,11 @@ function geocoder_admin_settings($form, &$form_state) {
   );
 
   $form['geocoder_google_delay'] = array(
-    '#type' => 'textfield',
+    '#type' => 'number',
     '#title' => t('Delay between Google geocoding requests (in milliseconds)'),
-    '#description' => t('Adds a delay between geocoding requests, to avoid OVER_QUERY_LIMIT errors from Google. 200ms is recommended.'),
+    '#description' => t('This delay will help avoid OVER_QUERY_LIMIT errors from Google. 200ms is recommended.'),
     '#default_value' => $config->get('geocoder_google_delay'),
+    '#field_suffix' => t('ms'),
     '#size' => 10,
   );
 
