@@ -377,7 +377,7 @@ function geocoder_widget_get_field_concat($items) {
  * Given a list of geometries, and user configuration on how to handle deltas,
  * we created a list of items to be inserted into the fields.
  */
-function geocoder_widget_resolve_deltas($geometries, $delta_handling = 'default', $target_info) {
+function geocoder_widget_resolve_deltas($geometries, $delta_handling, $target_info) {
   $values = array();
 
   // Default delta handling: just pass one delta to the next
