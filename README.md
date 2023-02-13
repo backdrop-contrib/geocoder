@@ -22,13 +22,19 @@ Geocoder uses external geocoding services from Google, Yahoo, and Yandex.
 |___/
 ```
 
+Requirements
+------------
+
+- [Geofield module](https://backdropcms.org/project/geofield).
+
+
 Installation
 ------------
 
 - Install this module and the required geoPHP module using the official
   Backdrop CMS instructions at https://backdropcms.org/guide/modules.
 
-- Install the (optional) common modules Addressfield and Geofield.
+- Install the (optional) Addressfield module.
 
 - Assign any necessary permissions.
 
