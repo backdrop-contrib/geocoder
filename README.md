@@ -72,7 +72,7 @@ Current Maintainers
 
 - Jen Lampton (https://github.com/jenlampton)
 - Wes Jones (https://github.com/earthday47)
-- gifad (https://github.com/gifad)
+- Seeking additional maintainers.
 
 Credits
 -------
