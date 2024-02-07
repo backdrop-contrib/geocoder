@@ -21,16 +21,14 @@ $plugin = array(
  * Process Markup
  */
 function geocoder_openstreetmap_nominatim($address, $options = array()) {
-  $api_url = 'http://nominatim.openstreetmap.org/';
+  $api_url = 'https://nominatim.openstreetmap.org/search';
 
   $params = array(
-    'q' => str_replace(' ', '+', $address),
+    'q' => $address,
     'format' => 'json',
-    'addressdetails' => 0,
     'limit' => 1,
-    'osm_type' => 'N',
   );
-  $request = backdrop_http_request($api_url . '?' . urldecode(backdrop_http_build_query($params)));
+  $request = backdrop_http_request($api_url . '?' . backdrop_http_build_query($params));
   $data = json_decode($request->data);
   return _geocoder_openstreetmap_nominatim_geometry($data);
 }
